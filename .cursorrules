@@ -1,0 +1,453 @@
+# WeChat Bot Project - Copilot Instructions
+
+## Project Overview
+
+This is an intelligent WeChat bot system that integrates with n8n for AI-powered group chat automation. The bot monitors multiple WeChat groups, detects mentions, and uses n8n workflows with LLM agents to generate intelligent responses.
+
+**Key Technologies**: Python, FastAPI, n8n, WeChatExtension-ForMac, LangChain/OpenAI
+
+**Architecture Pattern**: Event-driven microservices with message queuing and data isolation
+
+---
+
+## System Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  WeChat     │────▶│  Bot.py     │────▶│  n8n        │
+│  Groups     │     │  (Listener) │     │  Workflows  │
+└─────────────┘     └─────────────┘     └─────────────┘
+                            │                    │
+                            ▼                    ▼
+                     ┌─────────────┐     ┌─────────────┐
+                     │  Data Store │     │  AI Agent   │
+                     │  (Isolated) │     │  (LLM)      │
+                     └─────────────┘     └─────────────┘
+                            ▲                    │
+                            │                    ▼
+                     ┌─────────────┐     ┌─────────────┐
+                     │api_server.py│◀────│  HTTP       │
+                     │  (FastAPI)  │     │  Callback   │
+                     └─────────────┘     └─────────────┘
+```
+
+---
+
+## Project Structure
+
+```
+wechat-assistant/
+├── bot.py                    # Main bot entry point (message listener)
+├── api_server.py             # FastAPI server (receives n8n callbacks)
+├── config/
+│   ├── settings.py           # Configuration management with environment variables
+│   └── groups.yaml           # WeChat group configurations (isolated per group)
+├── core/
+│   ├── wechat.py             # WeChat API client (fixed version)
+│   ├── storage.py            # Data isolation layer (per-group storage)
+│   └── processor.py          # Message processing logic
+├── utils/
+│   ├── logger.py             # Logging utilities
+│   └── helpers.py            # Helper functions
+├── data/                     # Auto-generated data storage
+│   └── groups/               # Per-group isolated data
+│       └── {group_id}/
+│           ├── context/      # Conversation history
+│           ├── messages/     # Message logs
+│           └── state/        # State data
+└── logs/                     # Application logs
+```
+
+---
+
+## Key Components
+
+### 1. Bot.py (Main Listener)
+- **Purpose**: Polls WeChat groups for messages and sends to n8n
+- **Key Functions**:
+  - `process_group()`: Process messages from a single group
+  - `process_all_groups()`: Process all enabled groups
+  - Polling interval: 2 seconds (configurable)
+
+### 2. api_server.py (FastAPI Server)
+- **Purpose**: Receives callbacks from n8n and sends messages to WeChat
+- **Key Endpoints**:
+  - `POST /api/send-message`: Send message to specific group
+  - `POST /api/broadcast`: Broadcast to multiple groups
+  - `GET /health`: Health check
+  - `GET /api/groups`: List all groups
+  - `GET /api/stats/{group_id}`: Group statistics
+
+### 3. core/wechat.py (WeChat API Client)
+- **Purpose**: Wrapper for WeChatExtension-ForMac API
+- **Key Methods**:
+  - `get_chatlog_by_id()`: Get chat history
+  - `send_message_by_id()`: Send message
+  - **Important**: Fixed all issues from original implementation
+
+### 4. core/storage.py (Data Isolation)
+- **Purpose**: Manages per-group data isolation
+- **Key Features**:
+  - Each group has independent storage directory
+  - Message deduplication
+  - Context history management
+  - Automatic cleanup of old data
+
+### 5. core/processor.py (Message Processing)
+- **Purpose**: Detects mentions and prepares data for n8n
+- **Key Functions**:
+  - `is_mentioned()`: Check if bot is mentioned
+  - `prepare_payload()`: Format data for n8n webhook
+  - `send_to_n8n()`: Send to n8n webhook
+
+---
+
+## Data Isolation Design
+
+**Critical**: Each WeChat group has completely isolated data storage.
+
+```
+data/groups/
+├── group1_chatroom/
+│   ├── context/           # Per-user conversation history
+│   │   ├── user1.json
+│   │   └── user2.json
+│   ├── messages/          # Message logs
+│   │   └── messages_20250102.json
+│   └── state/             # State and processed message tracking
+│       └── processed_messages.json
+└── group2_chatroom/
+    └── ... (isolated)
+```
+
+**Key Rules**:
+- NEVER share data between groups
+- Each group maintains its own conversation context
+- Each group can have different system prompts
+- Each group can have different scheduled tasks
+
+---
+
+## Configuration
+
+### Environment Variables (.env)
+```bash
+N8N_WEBHOOK_URL=https://n8n.aishuohua.art/webhook/xxx
+WECHAT_API_BASE=https://wechat-assistant.qnap.aishuohua.art/wechat-plugin/
+BOT_NAME=阿祖
+MENTION_TRIGGER=@阿祖
+POLL_INTERVAL=2
+LOG_LEVEL=INFO
+```
+
+### Group Configuration (config/groups.yaml)
+```yaml
+groups:
+  - id: "group_id@chatroom"
+    name: "Group Name"
+    enabled: true
+    system_prompt: |
+      Custom system prompt for this group...
+    schedule:
+      morning_news:
+        enabled: true
+        time: "09:00"
+```
+
+---
+
+## Development Guidelines
+
+### Code Style
+1. **Always use type hints** for function parameters and return values
+2. **Always add docstrings** explaining purpose, args, and returns
+3. **Use f-strings** for string formatting
+4. **Handle exceptions** with specific error types
+5. **Log important events** at appropriate levels (INFO, WARNING, ERROR)
+
+### Error Handling
+```python
+try:
+    response = self._request("POST", "send-message", data=data)
+    if response is not None:
+        return True
+    else:
+        logger.error("Failed to send message")
+        return False
+except Exception as e:
+    logger.error(f"Unexpected error: {e}", exc_info=True)
+    return False
+```
+
+### Adding New Features
+1. **Isolate data per group** - use `GroupStorage` for group-specific data
+2. **Update schema** - if adding new config, update `groups.yaml` structure
+3. **Add logging** - log important events for debugging
+4. **Test with single group first** - before deploying to all groups
+5. **Backward compatibility** - ensure existing groups continue working
+
+---
+
+## Common Tasks
+
+### Adding a New Tool to n8n Workflow
+1. Create tool in n8n (e.g., search, weather, calculator)
+2. Update Agent node to use the tool
+3. Add system prompt instructions for when to use the tool
+4. Test with @阿祖 in a group
+
+### Adding a New Group
+1. Add group to `config/groups.yaml`:
+   ```yaml
+   - id: "new_group@chatroom"
+     name: "New Group"
+     enabled: true
+     system_prompt: "..."
+   ```
+2. Restart bot.py
+3. Data directory will be auto-created
+
+### Modifying System Prompt
+- Edit `system_prompt` in `config/groups.yaml` for specific group
+- No code changes needed
+- Restart bot.py to apply changes
+
+### Debugging Message Flow
+1. Check `bot.log` for message detection
+2. Check n8n workflow execution
+3. Check `api.log` for callback reception
+4. Check WeChat group for message delivery
+
+---
+
+## Critical Implementation Details
+
+### Message Deduplication
+- Uses MD5 hash of message content + timestamp
+- Stores hashes in `data/groups/{group_id}/state/processed_messages.json`
+- Automatic cleanup after 24 hours
+- Prevents duplicate processing
+
+### Context Management
+- Context stored per user per group
+- Maximum history: 20 messages (configurable)
+- TTL: 24 hours (configurable)
+- Format: List of message dictionaries with role/content
+
+### WeChat API Fixes
+The original code had multiple critical issues that were fixed:
+1. ✅ **Response checking**: Changed from `if r:` to `if r.status_code == 200:`
+2. ✅ **List parameters**: Properly serialized list parameters for API calls
+3. ✅ **Timeout handling**: Added 10-second timeout to prevent hanging
+4. ✅ **Exception handling**: Comprehensive error catching and logging
+5. ✅ **Variable naming**: Avoided shadowing built-in names like `json`
+
+### n8n Integration
+- **Webhook URL**: Configured in `.env` as `N8N_WEBHOOK_URL`
+- **Payload format**: JSON with group_id, user, message, chat_history, system_prompt
+- **Response**: n8n MUST respond with HTTP 200 (use "Respond to Webhook" node)
+- **Timeout**: 30 seconds (configurable in processor.py)
+
+---
+
+## Running the System
+
+### Start Services
+```bash
+# Terminal 1: Start bot listener
+python3 bot.py
+
+# Terminal 2: Start API server (for n8n callbacks)
+python3 api_server.py
+```
+
+### Monitor Logs
+```bash
+# Bot logs
+tail -f bot.log
+
+# API logs
+tail -f api.log
+
+# Daily logs
+tail -f logs/log-$(date +%Y%m%d).txt
+```
+
+### Stop Services
+```bash
+# Find PIDs
+ps aux | grep -E "bot.py|api_server.py"
+
+# Kill processes
+kill <PID>
+```
+
+---
+
+## Troubleshooting
+
+### Issue: Bot not detecting messages
+**Check**:
+- WeChat plugin is running
+- `WECHAT_API_BASE` is correct
+- Group ID in `groups.yaml` matches actual group
+- Messages contain `@阿祖` trigger
+
+### Issue: n8n timeout
+**Check**:
+- `N8N_WEBHOOK_URL` is correct
+- n8n workflow is active
+- n8n workflow has "Respond to Webhook" node at the end
+- Network connectivity to n8n server
+
+### Issue: No response from bot
+**Check**:
+- api_server.py is running
+- n8n workflow calls `http://localhost:8000/api/send-message`
+- Check api.log for callback requests
+- Check WeChat plugin connection
+
+### Issue: Mixed group data
+**Critical**: This should NEVER happen due to isolation design
+**Check**:
+- Each group uses separate `GroupStorage` instance
+- Data directories are separate
+- Context keys include group_id
+
+---
+
+## Performance Considerations
+
+1. **Polling Overhead**: 2-second interval for 5 groups = ~2.5 requests/second
+2. **Memory**: Context history limited to 20 messages per user per group
+3. **Disk**: Message logs rotated daily, auto-cleanup after 7 days
+4. **Network**: All API calls have 10-second timeout
+
+### Optimization Tips
+- Increase `POLL_INTERVAL` to reduce CPU usage
+- Decrease `CONTEXT_MAX_HISTORY` to reduce memory
+- Increase `CONTEXT_TTL` to keep context longer
+- Adjust cleanup interval in `storage_manager.cleanup_all()`
+
+---
+
+## Security Notes
+
+1. **API Keys**: Stored in `.env` file, never commit to git
+2. **Logs**: May contain sensitive chat data, protect log files
+3. **Network**: WeChat plugin uses HTTP (not HTTPS) - ensure trusted network
+4. **Data Isolation**: Groups cannot access each other's data by design
+
+---
+
+## Testing
+
+### Unit Testing
+```bash
+# Test WeChat API
+python3 -c "from core.wechat import WeChat; w=WeChat(); print(w.health_check())"
+
+# Test configuration
+python3 -c "from config.settings import settings; print(len(settings.groups))"
+
+# Test storage
+python3 -c "from core.storage import GroupStorage; s=GroupStorage('test', 'Test'); print(s.data_dir)"
+```
+
+### Integration Testing
+1. Send `@阿祖 你好` in a monitored group
+2. Check bot.log for detection
+3. Check n8n workflow execution
+4. Check api.log for callback
+5. Check WeChat group for response
+
+---
+
+## Future Enhancements
+
+### Planned Features
+- [ ] Redis for distributed message queue
+- [ ] WebSocket support for real-time message delivery
+- [ ] Multi-language support
+- [ ] Image processing and generation
+- [ ] Voice message support
+- [ ] Scheduled message queue
+- [ ] Group analytics dashboard
+
+### Architecture Evolution
+- Consider message broker (RabbitMQ/Redis) for better scaling
+- Consider gRPC for inter-service communication
+- Consider Kubernetes deployment for production
+- Consider adding metrics (Prometheus) and monitoring
+
+---
+
+## Contributing
+
+### Before Making Changes
+1. Understand the data isolation model
+2. Test changes with a single group first
+3. Add appropriate logging
+4. Update this document if architecture changes
+5. Test rollback procedures
+
+### Code Review Checklist
+- [ ] Data isolation maintained?
+- [ ] Error handling added?
+- [ ] Logging added?
+- [ ] Documentation updated?
+- [ ] Backward compatible?
+- [ ] Tested with multiple groups?
+
+---
+
+## Important Contacts
+
+- **n8n Instance**: https://n8n.aishuohua.art
+- **WeChat Plugin**: https://wechat-assistant.qnap.aishuohua.art/wechat-plugin/
+- **Project Root**: /mnt/extdata/workspace/wechat-assistant/
+
+---
+
+## Version History
+
+- **v1.0** (2025-01-02): Initial release
+  - Multi-group monitoring
+  - Data isolation
+  - n8n integration
+  - FastAPI server
+  - Fixed all WeChat API issues
+
+---
+
+## Quick Reference
+
+### Restart All Services
+```bash
+kill $(ps aux | grep -E "bot.py|api_server.py" | grep -v grep | awk '{print $2}')
+nohup python3 bot.py > bot.log 2>&1 &
+nohup python3 api_server.py > api.log 2>&1 &
+```
+
+### View All Logs
+```bash
+tail -f bot.log api.log
+```
+
+### Check System Health
+```bash
+curl http://localhost:8000/health
+```
+
+### Broadcast Message to All Groups
+```bash
+curl -X POST http://localhost:8000/api/broadcast \
+  -H "Content-Type: application/json" \
+  -d '{"message": "测试广播消息"}'
+```
+
+---
+
+**End of Copilot Instructions**
+
+For questions or issues, refer to the main README.md or check the logs in the `logs/` directory.

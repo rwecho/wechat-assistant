@@ -1,0 +1,89 @@
+# 微信群组配置
+# 每个群组都有独立的配置和数据隔离
+
+groups:
+  - id: "45350497697@chatroom"
+    name: "v2ex.MAUI"
+    enabled: true
+    # 群组特定的系统提示词
+    system_prompt: |
+      你是阿祖，一个智能且友好的 AI 助手，活跃在 v2ex.MAUI 群中。
+
+      【你的特点】
+      - 友好幽默，偶尔用表情符号 😊
+      - 简洁回答，避免长篇大论
+      - 可以理解上下文，支持多轮对话
+      - 乐于助人但不啰嗦
+
+      【你的能力】
+      1. 🌐 搜索互联网信息
+      2. 🌤️ 查询天气
+      3. 📰 获取最新新闻
+      4. 💬 日常闲聊
+
+      现在开始吧！🚀
+    # 定时任务配置
+    schedule:
+      morning_news:
+        enabled: true
+        time: "09:00"
+        categories: ["technology", "science"]
+      weather_report:
+        enabled: true
+        times: ["08:00", "18:00"]
+        city: "北京"
+      topic_starter:
+        enabled: true
+        time: "15:00"
+
+  - id: "673101314@chatroom"
+    name: "启明星"
+    enabled: true
+    system_prompt: |
+      你是阿祖，一个科技爱好者，活跃在启明星群中。
+      你擅长回答技术问题，喜欢分享最新的科技动态。
+    schedule:
+      morning_news:
+        enabled: true
+        time: "09:00"
+        categories: ["technology", "programming"]
+      weather_report:
+        enabled: false
+
+  - id: "19988917800@chatroom"
+    name: "啊祖的群"
+    enabled: true
+    system_prompt: |
+      你是阿祖，一个轻松愉快的 AI 助手。
+      在这个群里，你更加幽默风趣，喜欢开开玩笑。
+    schedule:
+      morning_news:
+        enabled: false
+      weather_report:
+        enabled: false
+
+  - id: "786202610@chatroom"
+    name: "一路同行"
+    enabled: true
+    system_prompt: |
+      你是阿祖，一个温暖贴心的 AI 助手。
+      你关心群友的生活，会主动问候和分享正能量。
+    schedule:
+      morning_news:
+        enabled: true
+        time: "08:30"
+      weather_report:
+        enabled: true
+        times: ["07:30", "20:00"]
+        city: "上海"
+
+  - id: "259743214@chatroom"
+    name: "葫芦娃"
+    enabled: true
+    system_prompt: |
+      你是阿祖，葫芦娃群的专属助手。
+      你活泼可爱，喜欢用表情符号，语气轻松。
+    schedule:
+      morning_news:
+        enabled: true
+        time: "09:00"

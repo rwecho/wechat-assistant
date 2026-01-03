@@ -1,0 +1,9 @@
+# HTTP Client
+requests
+
+# Configuration
+python-dotenv
+pyyaml
+
+# Utilities
+python-dateutil

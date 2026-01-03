@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  wechat-assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wechat-assistant
+    restart: unless-stopped
+
+    # 环境变量
+    env_file:
+      - .env
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Shanghai
+
+    # 数据卷挂载
+    volumes:
+      # 持久化数据目录
+      - ./data:/app/data
+      # 日志目录
+      - ./logs:/app/logs
+      # 配置文件（支持热更新）
+      - ./config/groups.yaml:/app/config/groups.yaml:ro
+      # 环境变量文件
+      - ./.env:/app/.env:ro
+
+    # 网络配置
+    # 如果需要暴露健康检查端口，可以取消注释
+    # ports:
+    #   - "8000:8000"
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+# 网络配置
+networks:
+  default:
+    name: wechat-assistant-network
+    driver: bridge

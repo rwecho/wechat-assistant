@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.claude
+.cursorrules
+
+# 数据和日志
+data/
+logs/
+*.log
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 文档
+*.md
+!README.md
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+bandit-report.json
+
+# 其他
+.DS_Store
+*.bak
+claude_code_env.sh
